@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dólar BCV</title>
+<style>
+body{font-family:sans-serif;max-width:420px;margin:20px auto;padding:0 12px}
+.card{border:1px solid #ccc;border-radius:8px;padding:10px;margin:8px 0}
+.hoy{background:#e8f5e9;border-color:#4caf50}
+input{width:100%;padding:10px;font-size:18px;box-sizing:border-box}
+.fila{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
+small{color:#666}
+</style>
+</head>
+<body>
+<h2>Dólar BCV 🇻🇪</h2>
+<input id="monto" type="number" inputmode="decimal" placeholder="Monto en bolívares (Bs)">
+<div id="hoy" class="card hoy">Cargando...</div>
+<h3>Días anteriores</h3>
+<div id="historial">Cargando...</div>
+<script>
+const API = "https://ve.dolarapi.com/v1";
+let hoy = null, historial = [];
+
+const fmt = n => n.toLocaleString("es-VE", {minimumFractionDigits:2, maximumFractionDigits:2});
+const tasa = d => d.promedio || d.venta || d.compra;
+
+async function cargar() {
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(API + "/dolares/oficial"),
+      fetch(API + "/historicos/dolares/oficial")
+    ]);
+    hoy = await r1.json();
+    const todos = await r2.json();
+    historial = todos
+      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+      .slice(0, 10);
+    mostrar();
+  } catch (e) {
+    document.getElementById("hoy").textContent = "Error al cargar precios";
+    document.getElementById("historial").textContent = "";
+  }
+}
+
+function mostrar() {
+  const m = parseFloat(document.getElementById("monto").value);
+  const t = tasa(hoy);
+  document.getElementById("hoy").innerHTML =
+    `<b>Hoy:</b> 1 USD = Bs ${fmt(t)}` +
+    (m ? `<br><b>${fmt(m)} Bs = $${fmt(m / t)} USD</b>` : "");
+
+  document.getElementById("historial").innerHTML = historial.map(d => {
+    const fecha = String(d.fecha).slice(0, 10);
+    const t = tasa(d);
+    return `<div class="fila"><span>${fecha}<br><small>Bs ${fmt(t)}</small></span>` +
+           `<b>${m ? "$" + fmt(m / t) : "-"}</b></div>`;
+  }).join("");
+}
+
+document.getElementById("monto").oninput = mostrar;
+cargar();
+</script>
+</body></html>
+
